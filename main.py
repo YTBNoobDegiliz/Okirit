@@ -1,132 +1,167 @@
-import flet as ft
+import streamlit as st
 import requests
-import json
 import base64
 
-# --- GİZLİ ANAHTAR BÖLGESİ ---
-# Kendi Base64 anahtarını buraya koy knk
+# --- API AYARI (Değiştirme) ---
+# Kendi Base64 anahtarını buraya yapıştır knk
 HIDDEN_KEY = "QUl6YVN5QWFSdC15TnE5T2I2Ty1pU01YNnlWQ1JYaFhjVXloTGhJ" 
 
 def get_key():
-    # Bu fonksiyon kodu çalıştırdığında anahtarı gizlice çözer
     return base64.b64decode(HIDDEN_KEY).decode("utf-8")
 
-def main(page: ft.Page):
-    page.title = "Okirit AI"
-    page.theme_mode = ft.ThemeMode.DARK
-    page.bgcolor = "#0F111A"  # Derin lacivert/siyah arka plan
-    page.padding = 0  # Kenarları sıfırladık, container ile kontrol edeceğiz
+# --- SAYFA AYARLARI ---
+st.set_page_config(page_title="Okirit AI", page_icon="🤖", layout="centered")
+
+# --- TAMAMEN ÖZEL CSS (Arayüz Burası) ---
+st.markdown("""
+    <style>
+    /* Arka Plan ve Genel Font */
+    .stApp {
+        background-color: #121212;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* Üst Başlık */
+    .okirit-header {
+        text-align: center;
+        color: #00E676;
+        text-shadow: 0 0 15px #00E676;
+        font-size: 2.5rem;
+        font-weight: bold;
+        letter-spacing: 2px;
+        margin-bottom: 20px;
+    }
+
+    /* Mesaj Konteyneri */
+    .chat-container {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        padding: 10px;
+        margin-bottom: 80px; /* Giriş alanı için boşluk */
+    }
+
+    /* Kullanıcı Mesaj Baloncuğu */
+    .user-bubble {
+        align-self: flex-end;
+        background: linear-gradient(135deg, #007AFF, #00C6FF);
+        color: white;
+        padding: 12px 18px;
+        border-radius: 18px 18px 0px 18px;
+        max-width: 80%;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        font-size: 0.95rem;
+    }
+
+    /* Okirit Mesaj Baloncuğu */
+    .ai-bubble {
+        align-self: flex-start;
+        background-color: #1D2733;
+        color: #E0E0E0;
+        padding: 15px 20px;
+        border-radius: 18px 18px 18px 0px;
+        max-width: 85%;
+        border: 1px solid #2B394A;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        font-size: 0.95rem;
+    }
     
-    # API Linkini gizli anahtarla oluşturuyoruz
-    API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={get_key()}"
+    .ai-name {
+        color: #00E676;
+        font-weight: bold;
+        font-size: 0.8rem;
+        margin-bottom: 5px;
+        letter-spacing: 1px;
+    }
 
-    # Mesaj listesi
-    chat = ft.ListView(
-        expand=True,
-        spacing=15,
-        padding=20,
-        auto_scroll=True,
-    )
+    /* Markdown Kod Blokları İyileştirmesi */
+    .stMarkdown pre {
+        background-color: #0F111A !important;
+        border: 1px solid #2B394A !important;
+        border-radius: 8px !important;
+    }
+    .stMarkdown code {
+        color: #FF80AB !important; /* Kod rengi */
+    }
 
-    def get_ai_response(prompt):
-        payload = {
-            "contents": [{
-                "parts": [{"text": f"Senin adın Okirit. Uzman bir yazılımcısın. Kodları markdown formatında yaz: {prompt}"}]
-            }]
-        }
-        try:
-            response = requests.post(API_URL, json=payload)
-            return response.json()['candidates'][0]['content']['parts'][0]['text']
-        except Exception as e:
-            return f"Bağlantı hatası! Anahtarı kontrol et knk. Hata: {str(e)}"
+    /* Giriş Alanı Sabitleme ve Tasarımı */
+    .stChatInputContainer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background-color: #121212;
+        padding: 15px;
+        border-top: 1px solid #2B394A;
+        z-index: 100;
+    }
+    .stChatInputContainer input {
+        border-radius: 25px !important;
+        background-color: #1D2733 !important;
+        border: 1px solid #2B394A !important;
+        color: white !important;
+        padding: 12px 20px !important;
+    }
+    .stChatInputContainer input:focus {
+        border-color: #00E676 !important;
+        box-shadow: 0 0 5px #00E676 !important;
+    }
+    
+    /* Streamlit varsayılan elemanlarını gizle */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
 
-    def send_click(e):
-        if not user_input.value:
-            return
+    </style>
+    """, unsafe_allow_html=True)
+
+# Başlığı Bas
+st.markdown("<div class='okirit-header'>OKİRİT AI</div>", unsafe_allow_html=True)
+
+# Mesaj Geçmişi
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# Mesajları Özel HTML ile Görüntüle
+st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
+for message in st.session_state.messages:
+    if message["role"] == "user":
+        st.markdown(f"<div class='user-bubble'>{message['content']}</div>", unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+            <div class='ai-bubble'>
+                <div class='ai-name'>OKİRİT</div>
+                <div>{message['content']}</div>
+            </div>
+        """, unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
+
+# Giriş Alanı
+if prompt := st.chat_input("Okirit'e bir şeyler yaz..."):
+    # Kullanıcı mesajını ekle
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    
+    # Sayfayı yenile (mesajı hemen göstermek için)
+    st.rerun()
+
+# Eğer son mesaj kullanıcıdaysa, API'den cevap al
+if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
+    user_prompt = st.session_state.messages[-1]["content"]
+    
+    with st.spinner("Okirit cevaplıyor..."):
+        API_KEY = get_key()
+        API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
         
-        user_msg = user_input.value
-        # Kullanıcı Baloncuğu
-        chat.controls.append(
-            ft.Row(
-                [
-                    ft.Container(
-                        content=ft.Text(user_msg, color="white"),
-                        bgcolor="#202C33",
-                        padding=12,
-                        border_radius=ft.border_radius.only(top_left=15, top_right=15, bottom_left=15),
-                    )
-                ],
-                alignment=ft.MainAxisAlignment.END,
-            )
-        )
-        user_input.value = ""
-        page.update()
-
-        # Okirit Baloncuğu
-        ai_reply = get_ai_response(user_msg)
-        chat.controls.append(
-            ft.Row(
-                [
-                    ft.Container(
-                        content=ft.Column([
-                            ft.Text("Okirit", size=12, color="#00E676", weight="bold"),
-                            ft.Markdown(ai_reply, selectable=True, extension_set="gitHubWeb"),
-                        ], tight=True, spacing=5),
-                        bgcolor="#1D2733",
-                        padding=15,
-                        border_radius=ft.border_radius.only(top_left=15, top_right=15, bottom_right=15),
-                        border=ft.border.all(1, "#2B394A"),
-                        width=320,
-                    )
-                ],
-                alignment=ft.MainAxisAlignment.START,
-            )
-        )
-        page.update()
-
-    # Üst Başlık (AppBar)
-    header = ft.Container(
-        content=ft.Row([
-            ft.Icon(ft.icons.RECYCLING_ROUNDED, color="#00E676", size=30),
-            ft.Text("OKİRİT AI", size=22, weight="bold", color="white", letter_spacing=2),
-        ], alignment=ft.MainAxisAlignment.CENTER),
-        padding=20,
-        bgcolor="#161925",
-        border=ft.border.only(bottom=ft.border.BorderSide(1, "#2B394A"))
-    )
-
-    # Giriş Alanı Tasarımı
-    user_input = ft.TextField(
-        hint_text="Bir şeyler yaz...",
-        border_color="#2B394A",
-        focused_border_color="#00E676",
-        fill_color="#161925",
-        filled=True,
-        expand=True,
-        multiline=False,
-        on_submit=send_click,
-    )
-
-    input_area = ft.Container(
-        content=ft.Row([
-            user_input,
-            ft.IconButton(
-                icon=ft.icons.SEND_ROUNDED,
-                icon_color="#00E676",
-                icon_size=30,
-                on_click=send_click
-            ),
-        ]),
-        padding=20,
-        bgcolor="#0F111A",
-    )
-
-    # Sayfaya ekle
-    page.add(
-        header,
-        ft.Container(content=chat, expand=True),
-        input_area
-    )
-
-if __name__ == "__main__":
-    ft.app(target=main)
+        payload = {
+            "contents": [{"parts": [{"text": f"Senin adın Okirit. Uzman bir yazılımcısın. Yanıtlarını profesyonelce hazırla. Kodları markdown blokları içinde ver: {user_prompt}"}]}]
+        }
+        
+        try:
+            res = requests.post(API_URL, json=payload)
+            response_text = res.json()['candidates'][0]['content']['parts'][0]['text']
+            # Cevabı ekle
+            st.session_state.messages.append({"role": "assistant", "content": response_text})
+            # Sayfayı yenile (cevabı göstermek için)
+            st.rerun()
+        except:
+            st.error("API Hatası! Base64 anahtarını doğru girdiğinden emin ol knk.")
