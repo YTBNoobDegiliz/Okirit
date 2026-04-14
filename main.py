@@ -1,50 +1,209 @@
-import streamlit as st
-import requests
+import tkinter as tk
+from tkinter import font
+import math
 
-# --- SAYFA AYARLARI ---
-st.set_page_config(page_title="Okirit AI", page_icon="🤖")
-
-# --- BURAYA GERÇEK API ANAHTARINI YAPIŞTIR ---
-API_KEY = "AIzaSyCjcWd8Eebs34JyC7gg_yqHRAHetjz2DDw" 
-
-# --- ŞIK TASARIM (Bok Gibi Durmayan Versiyon) ---
-st.markdown(f"""
-    <style>
-    .stApp {{ background-color: #0F111A; }}
-    .okirit-header {{ text-align: center; color: #00E676; text-shadow: 0 0 10px #00E676; font-size: 2.2rem; font-weight: bold; margin-top: -50px; margin-bottom: 20px; }}
-    .user-msg {{ background: #007AFF; color: white; padding: 12px; border-radius: 15px 15px 0 15px; margin: 10px 0; width: fit-content; max-width: 80%; float: right; clear: both; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); }}
-    .ai-msg {{ background: #1D2733; color: #E0E0E0; padding: 15px; border-radius: 15px 15px 15px 0; margin: 10px 0; width: fit-content; max-width: 85%; float: left; clear: both; border: 1px solid #2B394A; }}
-    .ai-name {{ color: #00E676; font-size: 0.8rem; font-weight: bold; margin-bottom: 5px; }}
-    #MainMenu, footer, header {{visibility: hidden;}}
-    .stChatInputContainer {{ border-radius: 30px !important; }}
-    </style>
-    <div class="okirit-header">OKİRİT AI</div>
-    """, unsafe_allow_html=True)
-
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-
-# Mesajları Ekrana Bas
-for chat in st.session_state.chat_history:
-    if chat["role"] == "user":
-        st.markdown(f'<div class="user-msg">{chat["content"]}</div>', unsafe_allow_html=True)
-    else:
-        st.markdown(f'<div class="ai-msg"><div class="ai-name">OKİRİT</div>{chat["content"]}</div>', unsafe_allow_html=True)
-
-# Giriş Alanı
-if prompt := st.chat_input("Okirit'e bir şeyler yaz..."):
-    # Senin mesajını ekle
-    st.session_state.chat_history.append({"role": "user", "content": prompt})
+class ModernCalculator:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Modern Hesap Makinesi")
+        self.root.geometry("400x600")
+        self.root.resizable(False, False)
+        self.root.configure(bg='#2C3E50')
+        
+        # Değişkenler
+        self.current_input = ""
+        self.result_var = tk.StringVar()
+        self.result_var.set("0")
+        
+        # Renkler
+        self.bg_color = "#2C3E50"
+        self.display_bg = "#34495E"
+        self.button_bg = "#ECF0F1"
+        self.button_fg = "#2C3E50"
+        self.operator_bg = "#E67E22"
+        self.operator_fg = "white"
+        self.equal_bg = "#27AE60"
+        self.equal_fg = "white"
+        self.clear_bg = "#E74C3C"
+        self.clear_fg = "white"
+        self.func_bg = "#3498DB"
+        self.func_fg = "white"
+        
+        # Fontlar
+        self.display_font = font.Font(family="Segoe UI", size=28, weight="bold")
+        self.button_font = font.Font(family="Segoe UI", size=14, weight="bold")
+        
+        self.create_widgets()
+        self.bind_keys()
     
-    # API İsteği
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
-    payload = {{"contents": [{"parts": [{"text": f"Senin adın Okirit. Uzman bir yazılımcısın: {{prompt}}"}]}]}}
+    def create_widgets(self):
+        # Ekran çerçevesi
+        display_frame = tk.Frame(self.root, bg=self.bg_color, height=120)
+        display_frame.pack(fill=tk.BOTH, padx=10, pady=(20, 10))
+        display_frame.pack_propagate(False)
+        
+        # Ekran
+        self.display_label = tk.Label(
+            display_frame,
+            textvariable=self.result_var,
+            font=self.display_font,
+            bg=self.display_bg,
+            fg="white",
+            anchor="e",
+            padx=15,
+            pady=20,
+            relief=tk.FLAT
+        )
+        self.display_label.pack(fill=tk.BOTH, expand=True)
+        
+        # Buton çerçevesi
+        buttons_frame = tk.Frame(self.root, bg=self.bg_color)
+        buttons_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 20))
+        
+        # Buton düzeni
+        buttons = [
+            ('C', 0, 0, 1, self.clear_bg, self.clear_fg),
+            ('±', 0, 1, 1, self.func_bg, self.func_fg),
+            ('%', 0, 2, 1, self.func_bg, self.func_fg),
+            ('÷', 0, 3, 1, self.operator_bg, self.operator_fg),
+            ('7', 1, 0, 1, self.button_bg, self.button_fg),
+            ('8', 1, 1, 1, self.button_bg, self.button_fg),
+            ('9', 1, 2, 1, self.button_bg, self.button_fg),
+            ('×', 1, 3, 1, self.operator_bg, self.operator_fg),
+            ('4', 2, 0, 1, self.button_bg, self.button_fg),
+            ('5', 2, 1, 1, self.button_bg, self.button_fg),
+            ('6', 2, 2, 1, self.button_bg, self.button_fg),
+            ('-', 2, 3, 1, self.operator_bg, self.operator_fg),
+            ('1', 3, 0, 1, self.button_bg, self.button_fg),
+            ('2', 3, 1, 1, self.button_bg, self.button_fg),
+            ('3', 3, 2, 1, self.button_bg, self.button_fg),
+            ('+', 3, 3, 1, self.operator_bg, self.operator_fg),
+            ('0', 4, 0, 2, self.button_bg, self.button_fg),
+            ('.', 4, 2, 1, self.button_bg, self.button_fg),
+            ('=', 4, 3, 1, self.equal_bg, self.equal_fg),
+        ]
+        
+        # Butonları oluştur
+        for btn in buttons:
+            text, row, col, colspan, bg, fg = btn
+            button = tk.Button(
+                buttons_frame,
+                text=text,
+                font=self.button_font,
+                bg=bg,
+                fg=fg,
+                relief=tk.FLAT,
+                bd=0,
+                cursor="hand2",
+                command=lambda t=text: self.button_click(t)
+            )
+            
+            # Hover efekti
+            button.bind("<Enter>", lambda e, b=button, bg=bg: b.configure(bg=self.darken_color(bg)))
+            button.bind("<Leave>", lambda e, b=button, bg=bg: b.configure(bg=bg))
+            
+            button.grid(row=row, column=col, columnspan=colspan, sticky="nsew", padx=5, pady=5)
+        
+        # Grid ağırlıkları
+        for i in range(5):
+            buttons_frame.grid_rowconfigure(i, weight=1)
+        for i in range(4):
+            buttons_frame.grid_columnconfigure(i, weight=1)
     
-    try:
-        response = requests.post(url, json=payload)
-        bot_response = response.json()['candidates'][0]['content']['parts'][0]['text']
-        st.session_state.chat_history.append({"role": "assistant", "content": bot_response})
-    except:
-        st.session_state.chat_history.append({"role": "assistant", "content": "Hata oluştu knk, anahtarın doğru mu?"})
+    def darken_color(self, color):
+        """Rengi koyulaştır"""
+        if color == self.button_bg:
+            return "#D5D8DC"
+        elif color == self.operator_bg:
+            return "#D35400"
+        elif color == self.equal_bg:
+            return "#229954"
+        elif color == self.clear_bg:
+            return "#C0392B"
+        elif color == self.func_bg:
+            return "#2980B9"
+        return color
     
-    st.rerun()
+    def button_click(self, value):
+        if value == 'C':
+            self.current_input = ""
+            self.result_var.set("0")
+        elif value == '=':
+            self.calculate_result()
+        elif value == '±':
+            if self.current_input and self.current_input != "0":
+                if self.current_input[0] == '-':
+                    self.current_input = self.current_input[1:]
+                else:
+                    self.current_input = '-' + self.current_input
+                self.result_var.set(self.current_input)
+        elif value == '%':
+            self.calculate_percentage()
+        elif value in ['+', '-', '×', '÷']:
+            if self.current_input:
+                self.current_input += ' ' + value + ' '
+                self.result_var.set(self.current_input)
+        else:
+            # Sayı ve nokta ekleme
+            if self.current_input == "0" and value != '.':
+                self.current_input = value
+            else:
+                self.current_input += value
+            self.result_var.set(self.current_input)
+    
+    def calculate_result(self):
+        try:
+            # İşlem sembollerini Python operatörlerine çevir
+            expression = self.current_input.replace('×', '*').replace('÷', '/')
+            result = eval(expression)
+            
+            # Sonucu formatla
+            if isinstance(result, float):
+                if result.is_integer():
+                    result = int(result)
+                else:
+                    result = round(result, 8)
+            
+            self.current_input = str(result)
+            self.result_var.set(self.current_input)
+        except Exception as e:
+            self.result_var.set("Hata!")
+            self.current_input = ""
+    
+    def calculate_percentage(self):
+        try:
+            # Yüzde hesaplama
+            expression = self.current_input.replace('×', '*').replace('÷', '/')
+            result = eval(expression) / 100
+            self.current_input = str(result)
+            self.result_var.set(self.current_input)
+        except:
+            self.result_var.set("Hata!")
+            self.current_input = ""
+    
+    def bind_keys(self):
+        """Klavye desteği"""
+        self.root.bind('<Return>', lambda e: self.button_click('='))
+        self.root.bind('<Escape>', lambda e: self.button_click('C'))
+        self.root.bind('<BackSpace>', self.backspace)
+        
+        for key in '0123456789':
+            self.root.bind(key, lambda e, k=key: self.button_click(k))
+        
+        self.root.bind('+', lambda e: self.button_click('+'))
+        self.root.bind('-', lambda e: self.button_click('-'))
+        self.root.bind('*', lambda e: self.button_click('×'))
+        self.root.bind('/', lambda e: self.button_click('÷'))
+        self.root.bind('.', lambda e: self.button_click('.'))
+        self.root.bind('%', lambda e: self.button_click('%'))
+    
+    def backspace(self, event):
+        self.current_input = self.current_input[:-1]
+        if not self.current_input:
+            self.current_input = "0"
+        self.result_var.set(self.current_input)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    calculator = ModernCalculator(root)
+    root.mainloop()
