@@ -1,209 +1,159 @@
-import tkinter as tk
-from tkinter import font
-import math
+import streamlit as st
+import random
 
-class ModernCalculator:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Modern Hesap Makinesi")
-        self.root.geometry("400x600")
-        self.root.resizable(False, False)
-        self.root.configure(bg='#2C3E50')
-        
-        # Değişkenler
-        self.current_input = ""
-        self.result_var = tk.StringVar()
-        self.result_var.set("0")
-        
-        # Renkler
-        self.bg_color = "#2C3E50"
-        self.display_bg = "#34495E"
-        self.button_bg = "#ECF0F1"
-        self.button_fg = "#2C3E50"
-        self.operator_bg = "#E67E22"
-        self.operator_fg = "white"
-        self.equal_bg = "#27AE60"
-        self.equal_fg = "white"
-        self.clear_bg = "#E74C3C"
-        self.clear_fg = "white"
-        self.func_bg = "#3498DB"
-        self.func_fg = "white"
-        
-        # Fontlar
-        self.display_font = font.Font(family="Segoe UI", size=28, weight="bold")
-        self.button_font = font.Font(family="Segoe UI", size=14, weight="bold")
-        
-        self.create_widgets()
-        self.bind_keys()
+st.set_page_config(page_title="XOX Oyunu", page_icon="🎮")
+
+# Modern CSS
+st.markdown("""
+<style>
+    .xox-btn {
+        width: 100%;
+        height: 100px;
+        font-size: 48px;
+        font-weight: bold;
+        border-radius: 15px;
+        background-color: #2c3e50;
+        color: white;
+        border: 3px solid #34495e;
+        transition: all 0.3s;
+    }
+    .xox-btn:hover {
+        transform: scale(1.05);
+        background-color: #e74c3c;
+    }
+    .title {
+        text-align: center;
+        font-size: 64px;
+        font-weight: bold;
+        color: #e74c3c;
+        margin-bottom: 20px;
+    }
+    .turn-indicator {
+        text-align: center;
+        font-size: 24px;
+        padding: 15px;
+        border-radius: 10px;
+        margin: 10px 0;
+        background-color: #34495e;
+        color: white;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown('<div class="title">⚡ X O X ⚡</div>', unsafe_allow_html=True)
+
+# Session state
+if 'board' not in st.session_state:
+    st.session_state.board = [''] * 9
+    st.session_state.current = 'X'
+    st.session_state.game_over = False
+    st.session_state.vs_computer = False
+    st.session_state.winner = None
+
+def check_winner():
+    win_combo = [
+        [0,1,2], [3,4,5], [6,7,8],
+        [0,3,6], [1,4,7], [2,5,8],
+        [0,4,8], [2,4,6]
+    ]
+    for combo in win_combo:
+        if (st.session_state.board[combo[0]] == st.session_state.board[combo[1]] == 
+            st.session_state.board[combo[2]] != ''):
+            st.session_state.game_over = True
+            st.session_state.winner = st.session_state.board[combo[0]]
+            return True
+    if '' not in st.session_state.board:
+        st.session_state.game_over = True
+        st.session_state.winner = 'berabere'
+        return True
+    return False
+
+def make_move(index):
+    if st.session_state.game_over:
+        return
+    if st.session_state.board[index] != '':
+        return
     
-    def create_widgets(self):
-        # Ekran çerçevesi
-        display_frame = tk.Frame(self.root, bg=self.bg_color, height=120)
-        display_frame.pack(fill=tk.BOTH, padx=10, pady=(20, 10))
-        display_frame.pack_propagate(False)
-        
-        # Ekran
-        self.display_label = tk.Label(
-            display_frame,
-            textvariable=self.result_var,
-            font=self.display_font,
-            bg=self.display_bg,
-            fg="white",
-            anchor="e",
-            padx=15,
-            pady=20,
-            relief=tk.FLAT
-        )
-        self.display_label.pack(fill=tk.BOTH, expand=True)
-        
-        # Buton çerçevesi
-        buttons_frame = tk.Frame(self.root, bg=self.bg_color)
-        buttons_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 20))
-        
-        # Buton düzeni
-        buttons = [
-            ('C', 0, 0, 1, self.clear_bg, self.clear_fg),
-            ('±', 0, 1, 1, self.func_bg, self.func_fg),
-            ('%', 0, 2, 1, self.func_bg, self.func_fg),
-            ('÷', 0, 3, 1, self.operator_bg, self.operator_fg),
-            ('7', 1, 0, 1, self.button_bg, self.button_fg),
-            ('8', 1, 1, 1, self.button_bg, self.button_fg),
-            ('9', 1, 2, 1, self.button_bg, self.button_fg),
-            ('×', 1, 3, 1, self.operator_bg, self.operator_fg),
-            ('4', 2, 0, 1, self.button_bg, self.button_fg),
-            ('5', 2, 1, 1, self.button_bg, self.button_fg),
-            ('6', 2, 2, 1, self.button_bg, self.button_fg),
-            ('-', 2, 3, 1, self.operator_bg, self.operator_fg),
-            ('1', 3, 0, 1, self.button_bg, self.button_fg),
-            ('2', 3, 1, 1, self.button_bg, self.button_fg),
-            ('3', 3, 2, 1, self.button_bg, self.button_fg),
-            ('+', 3, 3, 1, self.operator_bg, self.operator_fg),
-            ('0', 4, 0, 2, self.button_bg, self.button_fg),
-            ('.', 4, 2, 1, self.button_bg, self.button_fg),
-            ('=', 4, 3, 1, self.equal_bg, self.equal_fg),
-        ]
-        
-        # Butonları oluştur
-        for btn in buttons:
-            text, row, col, colspan, bg, fg = btn
-            button = tk.Button(
-                buttons_frame,
-                text=text,
-                font=self.button_font,
-                bg=bg,
-                fg=fg,
-                relief=tk.FLAT,
-                bd=0,
-                cursor="hand2",
-                command=lambda t=text: self.button_click(t)
-            )
-            
-            # Hover efekti
-            button.bind("<Enter>", lambda e, b=button, bg=bg: b.configure(bg=self.darken_color(bg)))
-            button.bind("<Leave>", lambda e, b=button, bg=bg: b.configure(bg=bg))
-            
-            button.grid(row=row, column=col, columnspan=colspan, sticky="nsew", padx=5, pady=5)
-        
-        # Grid ağırlıkları
-        for i in range(5):
-            buttons_frame.grid_rowconfigure(i, weight=1)
-        for i in range(4):
-            buttons_frame.grid_columnconfigure(i, weight=1)
+    st.session_state.board[index] = st.session_state.current
     
-    def darken_color(self, color):
-        """Rengi koyulaştır"""
-        if color == self.button_bg:
-            return "#D5D8DC"
-        elif color == self.operator_bg:
-            return "#D35400"
-        elif color == self.equal_bg:
-            return "#229954"
-        elif color == self.clear_bg:
-            return "#C0392B"
-        elif color == self.func_bg:
-            return "#2980B9"
-        return color
-    
-    def button_click(self, value):
-        if value == 'C':
-            self.current_input = ""
-            self.result_var.set("0")
-        elif value == '=':
-            self.calculate_result()
-        elif value == '±':
-            if self.current_input and self.current_input != "0":
-                if self.current_input[0] == '-':
-                    self.current_input = self.current_input[1:]
-                else:
-                    self.current_input = '-' + self.current_input
-                self.result_var.set(self.current_input)
-        elif value == '%':
-            self.calculate_percentage()
-        elif value in ['+', '-', '×', '÷']:
-            if self.current_input:
-                self.current_input += ' ' + value + ' '
-                self.result_var.set(self.current_input)
+    if not check_winner():
+        if st.session_state.current == 'X':
+            st.session_state.current = 'O'
         else:
-            # Sayı ve nokta ekleme
-            if self.current_input == "0" and value != '.':
-                self.current_input = value
-            else:
-                self.current_input += value
-            self.result_var.set(self.current_input)
-    
-    def calculate_result(self):
-        try:
-            # İşlem sembollerini Python operatörlerine çevir
-            expression = self.current_input.replace('×', '*').replace('÷', '/')
-            result = eval(expression)
-            
-            # Sonucu formatla
-            if isinstance(result, float):
-                if result.is_integer():
-                    result = int(result)
-                else:
-                    result = round(result, 8)
-            
-            self.current_input = str(result)
-            self.result_var.set(self.current_input)
-        except Exception as e:
-            self.result_var.set("Hata!")
-            self.current_input = ""
-    
-    def calculate_percentage(self):
-        try:
-            # Yüzde hesaplama
-            expression = self.current_input.replace('×', '*').replace('÷', '/')
-            result = eval(expression) / 100
-            self.current_input = str(result)
-            self.result_var.set(self.current_input)
-        except:
-            self.result_var.set("Hata!")
-            self.current_input = ""
-    
-    def bind_keys(self):
-        """Klavye desteği"""
-        self.root.bind('<Return>', lambda e: self.button_click('='))
-        self.root.bind('<Escape>', lambda e: self.button_click('C'))
-        self.root.bind('<BackSpace>', self.backspace)
+            st.session_state.current = 'X'
         
-        for key in '0123456789':
-            self.root.bind(key, lambda e, k=key: self.button_click(k))
-        
-        self.root.bind('+', lambda e: self.button_click('+'))
-        self.root.bind('-', lambda e: self.button_click('-'))
-        self.root.bind('*', lambda e: self.button_click('×'))
-        self.root.bind('/', lambda e: self.button_click('÷'))
-        self.root.bind('.', lambda e: self.button_click('.'))
-        self.root.bind('%', lambda e: self.button_click('%'))
-    
-    def backspace(self, event):
-        self.current_input = self.current_input[:-1]
-        if not self.current_input:
-            self.current_input = "0"
-        self.result_var.set(self.current_input)
+        # Bilgisayar hamlesi
+        if st.session_state.vs_computer and st.session_state.current == 'O' and not st.session_state.game_over:
+            empty = [i for i, val in enumerate(st.session_state.board) if val == '']
+            if empty:
+                comp_move = random.choice(empty)
+                st.session_state.board[comp_move] = 'O'
+                check_winner()
+                if not st.session_state.game_over:
+                    st.session_state.current = 'X'
 
-if __name__ == "__main__":
-    root = tk.Tk()
-    calculator = ModernCalculator(root)
-    root.mainloop()
+def reset_game():
+    st.session_state.board = [''] * 9
+    st.session_state.current = 'X'
+    st.session_state.game_over = False
+    st.session_state.winner = None
+
+def set_mode(mode):
+    reset_game()
+    st.session_state.vs_computer = (mode == 'computer')
+
+# Mod seçimi
+col1, col2, col3 = st.columns(3)
+with col1:
+    if st.button("👥 Arkadaşına Karşı", use_container_width=True):
+        set_mode('friend')
+with col2:
+    if st.button("🤖 Bilgisayara Karşı", use_container_width=True):
+        set_mode('computer')
+with col3:
+    if st.button("🔄 Yeni Oyun", use_container_width=True):
+        reset_game()
+
+# Sıra göstergesi
+if st.session_state.game_over:
+    if st.session_state.winner == 'X':
+        st.success("🎉 SEN KAZANDIN! 🎉")
+    elif st.session_state.winner == 'O':
+        if st.session_state.vs_computer:
+            st.error("🤖 BİLGİSAYAR KAZANDI! 🤖")
+        else:
+            st.error("🎉 ARKADAŞIN KAZANDI! 🎉")
+    else:
+        st.warning("🤝 BERABERE! 🤝")
+else:
+    if st.session_state.vs_computer:
+        turn_text = "SEN (X)" if st.session_state.current == 'X' else "BİLGİSAYAR (O)"
+    else:
+        turn_text = f"OYUNCU {st.session_state.current}"
+    st.markdown(f'<div class="turn-indicator">⭐ SIRA: {turn_text} ⭐</div>', unsafe_allow_html=True)
+
+# Oyun tahtası (3x3 grid)
+for i in range(3):
+    cols = st.columns(3)
+    for j in range(3):
+        idx = i * 3 + j
+        with cols[j]:
+            if st.session_state.board[idx]:
+                color = "#e74c3c" if st.session_state.board[idx] == 'X' else "#3498db"
+                st.markdown(f"""
+                <div style="
+                    background-color: {color};
+                    height: 100px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 48px;
+                    font-weight: bold;
+                    border-radius: 15px;
+                    color: white;
+                ">{st.session_state.board[idx]}</div>
+                """, unsafe_allow_html=True)
+            else:
+                if st.button("⬜", key=f"btn_{idx}", use_container_width=True):
+                    make_move(idx)
+                    st.rerun()
